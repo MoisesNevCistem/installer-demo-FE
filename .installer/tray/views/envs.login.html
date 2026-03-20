@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            background: #0d1117;
+            color: #e6edf3;
+            font-family: Consolas;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .box {
+            background: #161b22;
+            border: 1px solid #30363d;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        input {
+            margin-top: 10px;
+            padding: 8px;
+            width: 200px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: white;
+        }
+        button {
+            margin-top: 10px;
+            padding: 6px 12px;
+            background: #238636;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+        .err {
+            color: #f85149;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+    <body>
+        <div class="box">
+            <div>🔐 Acceso a Variables de Entorno</div>
+            <input id="pass" type="password" placeholder="Contraseña" />
+            <br>
+            <button onclick="login()">Ingresar</button>
+            <div id="err" class="err"></div>
+        </div>
+
+        <script>
+            const { ipcRenderer } = require('electron')
+
+            // Soporte para Enter
+            document.getElementById('pass').addEventListener('keydown', e => {
+            if (e.key === 'Enter') login()
+            })
+
+            function login() {
+                const pass = document.getElementById('pass').value.trim()
+                if (!pass) return
+                ipcRenderer.send('env-auth', pass)
+                }
+
+                // Solo se dispara si la contraseña fue incorrecta
+                // El éxito lo maneja tray.cjs con loadFile() directamente
+                ipcRenderer.on('env-auth-result', (_, ok) => {
+                if (!ok) {
+                    document.getElementById('err').textContent = "Contraseña incorrecta"
+                    document.getElementById('pass').value = ""
+                    document.getElementById('pass').focus()
+                }
+            })
+        </script>
+    </body>
+</html>
