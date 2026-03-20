@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117; color: #e6edf3;
+    font-family: Consolas, "Courier New", monospace; font-size: 13px;
+    height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  #topbar {
+    background: #161b22; border-bottom: 1px solid #30363d;
+    padding: 10px 16px; display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  }
+  #topbar .title { font-size: 12px; color: #8b949e; flex: 1; user-select: none; }
+  #topbar .path-badge {
+    font-size: 10px; color: #58a6ff; background: #1f2937;
+    border: 1px solid #30363d; border-radius: 4px; padding: 2px 8px;
+    max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .btn {
+    font-family: Consolas, monospace; font-size: 11px; padding: 5px 14px;
+    border-radius: 5px; cursor: pointer; border: 1px solid transparent;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn-save   { background: #238636; color: #fff; border-color: #2ea043; }
+  .btn-save:hover { background: #2ea043; }
+  .btn-reload { background: #21262d; color: #c9d1d9; border-color: #30363d; }
+  .btn-reload:hover { background: #30363d; }
+  #editor-wrap { display: flex; flex: 1; overflow: hidden; }
+  #line-numbers {
+    background: #161b22; border-right: 1px solid #21262d;
+    padding: 12px 10px 12px 14px; text-align: right; color: #484f58;
+    font-size: 13px; line-height: 1.65; user-select: none;
+    overflow: hidden; min-width: 46px; white-space: pre;
+  }
+  #env-textarea {
+    flex: 1; background: #0d1117; color: #79c0ff; border: none; outline: none;
+    padding: 12px 14px; font-family: Consolas, "Courier New", monospace;
+    font-size: 13px; line-height: 1.65; resize: none; overflow-y: auto;
+    white-space: pre; tab-size: 2; caret-color: #58a6ff;
+  }
+  #env-textarea::selection { background: #264f78; }
+  #env-textarea::-webkit-scrollbar { width: 6px; }
+  #env-textarea::-webkit-scrollbar-track { background: #0d1117; }
+  #env-textarea::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+  #statusbar {
+    background: #161b22; border-top: 1px solid #30363d;
+    padding: 4px 16px; font-size: 10px; color: #8b949e;
+    display: flex; gap: 16px; flex-shrink: 0;
+  }
+  #statusbar .msg { margin-left: auto; }
+  #statusbar .msg.ok  { color: #3fb950; }
+  #statusbar .msg.err { color: #f85149; }
+  .warn-banner {
+    background: #3d1f00; border-bottom: 1px solid #f85149;
+    color: #ffa657; font-size: 11px; padding: 6px 16px;
+    display: none; /* se activa por IPC */
+  }
+</style>
+</head>
+<body>
+<div id="topbar">
+  <span class="title">Editor de Variables de Entorno</span>
+  <span id="path-badge" class="path-badge" title="">cargando...</span>
+  <button class="btn btn-reload" onclick="reloadFile()">↺ Recargar</button>
+  <button class="btn btn-save"   onclick="saveFile()">💾 Guardar</button>
+</div>
+<div class="warn-banner" id="warn-banner">⚠ Archivo .env no encontrado. Si guardas, se creará en la ruta indicada.</div>
+<div id="editor-wrap">
+  <div id="line-numbers"></div>
+  <textarea id="env-textarea" spellcheck="false"></textarea>
+</div>
+<div id="statusbar">
+  <span id="stat-lines">Líneas: 0</span>
+  <span id="stat-col">Col: 1</span>
+  <span id="stat-msg" class="msg"></span>
+</div>
+<script>
+const { ipcRenderer } = require('electron')
+const textarea   = document.getElementById('env-textarea')
+const lineNums   = document.getElementById('line-numbers')
+const statLines  = document.getElementById('stat-lines')
+const statCol    = document.getElementById('stat-col')
+const statMsg    = document.getElementById('stat-msg')
+const pathBadge  = document.getElementById('path-badge')
+const warnBanner = document.getElementById('warn-banner')
+
+// ── Inicialización desde main ────────────────────────────────
+ipcRenderer.on('env-init', (_, { path, content, hasError }) => {
+  pathBadge.textContent    = path
+  pathBadge.title          = path
+  warnBanner.style.display = hasError ? 'block' : 'none'
+  textarea.value           = content
+  updateLineNumbers()
+})
+
+textarea.addEventListener('scroll', () => { lineNums.scrollTop = textarea.scrollTop })
+
+function updateLineNumbers() {
+  const lines = textarea.value.split('\n')
+  statLines.textContent = 'Líneas: ' + lines.length
+  lineNums.textContent  = lines.map((_, i) => i + 1).join('\n')
+}
+
+function updateCursor() {
+  const pos    = textarea.selectionStart
+  const before = textarea.value.substring(0, pos)
+  const col    = before.length - before.lastIndexOf('\n')
+  statCol.textContent = 'Col: ' + col
+}
+
+function showMsg(text, type, ms = 3000) {
+  statMsg.textContent = text
+  statMsg.className   = 'msg ' + type
+  setTimeout(() => { statMsg.textContent = ''; statMsg.className = 'msg' }, ms)
+}
+
+textarea.addEventListener('keyup',  updateCursor)
+textarea.addEventListener('click',  updateCursor)
+textarea.addEventListener('input',  updateLineNumbers)
+
+textarea.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab') {
+    e.preventDefault()
+    const s  = textarea.selectionStart
+    const e2 = textarea.selectionEnd
+    textarea.value = textarea.value.substring(0, s) + '  ' + textarea.value.substring(e2)
+    textarea.selectionStart = textarea.selectionEnd = s + 2
+    updateLineNumbers()
+  }
+  if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveFile() }
+})
+
+function saveFile()   { ipcRenderer.send('save-env', textarea.value) }
+function reloadFile() { ipcRenderer.send('reload-env') }
+
+ipcRenderer.on('env-saved', (_, ok) => {
+  showMsg(ok ? '✓ Guardado correctamente' : '✗ Error al guardar', ok ? 'ok' : 'err')
+})
+
+ipcRenderer.on('env-content', (_, content) => {
+  textarea.value = content
+  updateLineNumbers()
+  showMsg('↺ Recargado', 'ok', 2000)
+})
+
+updateLineNumbers()
+</script>
+</body>
+</html>

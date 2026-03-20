@@ -1,0 +1,17 @@
+directories:
+  output: .installer/tray/bundle
+  buildResources: build
+appId: com.cistem.monittrayfе
+productName: MonitTray-FE
+artifactName: MonitTray-FE.exe
+files:
+  - filter:
+      - .installer/tray/**/*
+      - '!.installer/tray/bundle/**/*'
+      - '!node_modules/**/*'
+win:
+  icon: .installer/tray/Jigglypuff.ico
+  target: portable
+mac: null
+linux: null
+electronVersion: 41.0.3

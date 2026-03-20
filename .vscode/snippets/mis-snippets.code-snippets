@@ -1,0 +1,128 @@
+{
+    // Plantilla de un componente general Composition API
+    "Custom Component CompositionAPI": {
+		"prefix": "custom-component-compositionAPI",
+		"body": [
+			"<script setup>",
+			"    ",
+			"</script>",
+			"",
+			"<template>",
+			"    <div>",
+			"        $1",
+			"    </div>",
+			"</template>",
+			"",
+			"<style scoped>",
+			"    ",
+			"</style>",
+		],
+		"description": "Estructura con Composition API"
+	},
+	// Plantilla del Composable
+	"Custom Composable JS": {
+		"prefix": "composable-setup-js",
+		"body": [
+			"import { ref } from 'vue';",
+			"",
+			"export const use$1 = () => {",
+			"",
+			"  	//* PROPERTIES",
+			"",
+			"  	//* METHODS",
+			"",
+			"    return {",
+			"  	//* PROPERTIES",
+			"  		",
+			"  	//* METHODS",
+			"  		",
+			"    }",
+			"",
+			"}",
+		],
+		"description": "Estructura Composable JS"
+	},
+	// Plantilla del Store
+	"Custom Store Structure": {
+		"prefix": "custom-store-structure",
+		"body": [
+			"//* Importaciones",
+			"import { ref } from 'vue';",
+			"import { defineStore } from 'pinia';",
+			"",
+			"export const use$1 = defineStore('$2',() => {",
+			"",
+			"    // STATES",			
+			"",
+			"    // ACTIONS",
+			"",
+			"    return {",
+			"        // STATES",
+			"",
+			"        // ACTIONS",
+			"        ",
+			"    }",
+			"})"
+		],
+		"description": "Estructura de una Store JS"
+	},
+	// Plantilla del Router
+	"Custom Router": {
+		"prefix": "Estructura-router",
+		"body": [
+			"//* Importaciones de dependencias",
+			"import { createRouter, createWebHistory } from 'vue-router';",
+			"",
+			"// Guards",
+			"",
+			"const PATH_NAME = 'NOMBRE DE PESTAÑAS';",
+			"",
+			"const router = createRouter({",
+			"    history: createWebHistory(),",
+			"    routes: [",
+			"        //* --> RUTA PRINCIPAL",
+			"        {",
+			"            path: '/',",
+			"            name: 'home-page',",
+			"            component: () => import('RUTA'),",
+			"            meta: { title: `${ PATH_NAME } | Inicio ` },",
+			"            redirect: '/ruta-ejemplo', // VALOR TEMPORAL",
+			"            children: []",
+			"        },",
+			"        //* --> RUTA PAGE NOT FOUND",
+			"        {",
+			"            path: '/:pathMatch(.*)*',",
+			"            name: 'page-not-found',",
+			"            component: () => import('RUTA'),",
+			"            meta: { title: `${ PATH_NAME } | Página No Encontrada` }",
+			"        },",
+			"    ]",
+			"})",
+			"",
+			"export { router };"
+		],
+		"description": "Estructura router"
+	},
+	// Plantilla del Guard
+	"Custom Guard": {
+		"prefix": "guard-custom-structure",
+		"body": [
+			"/**",
+			" * @function",
+			" * @name $1",
+			" * @param {Object} router - Objeto del router de Vue.js.",
+			" * @returns {void}",
+			" */",
+			"export const $2 = ( router ) => {",
+			"",
+			"    router.beforeEach((to,from,next) => {",
+			"",
+			"        $3",
+			"",
+			"    })",
+			"",
+			"}"
+		],
+		"description": "Estructura de un guard"
+	}
+}

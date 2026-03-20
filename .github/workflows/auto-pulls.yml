@@ -1,0 +1,97 @@
+name: Sync Latest Code to Windows Server
+
+on:
+  push:
+    branches:
+      - <branch> # Asignar la rama correspondiente
+
+jobs:
+  update-server:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js (latest LTS)
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Cache Node.js dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies (with npm install)
+        run: |
+          if [ ! -d "node_modules" ]; then
+            echo "Instalando dependencias con npm install..."
+            npm install
+          else
+            echo "Las dependencias ya están instaladas, usando caché."
+          fi
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+
+      - name: Update Windows Server with GitHub Code
+        env:
+          SSH_PASSWORD: ${{ secrets.SSH_PWD_USER }}
+        run: |
+          sshpass -p "$SSH_PASSWORD" ssh -T -o StrictHostKeyChecking=no -p 22 administrator@107.178.98.246 << 'EOF'
+            cd C:\...
+            git pull git@github.com:<owner>/<repository>.git <branch>
+          EOF
+        # Asignar la ruta correspondiente en el servidor Windows
+        # Asignar el usuario correspondiente en el servidor Windows
+        # Asignar el repositorio correspondiente
+        # Asignar la rama correspondiente
+
+      - name: Final message
+        run: echo "Pull realizado en el servidor Windows con éxito"
+
+      - name: Slack Notification (Success)
+        if: success()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_USERNAME: "GitHub Actions 🤖"
+          SLACK_ICON_EMOJI: ":rocket:"
+          SLACK_TITLE: "🚀 Nuevo Pull en ${{ github.repository }}"
+          SLACK_MESSAGE: |
+            *📌 Commit:* `${{ github.event.head_commit.message }}`
+            *👤 Autor:* `${{ github.event.head_commit.author.name }}`
+            *📂 Repositorio:* <${{ github.event.repository.html_url }}|${{ github.repository }}>
+            *🌿 Rama:* `${{ github.ref_name }}`
+            *🕒 Fecha:* `${{ github.event.head_commit.timestamp }}`
+            *👥 Ejecutado por:* `${{ github.actor }}`
+            *📊 Estado:* `✅ Éxito`
+          SLACK_COLOR: "good"
+
+      - name: Slack Notification (Failure)
+        if: failure()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_USERNAME: "GitHub Actions 🤖"
+          SLACK_ICON_EMOJI: ":x:"
+          SLACK_TITLE: "🚨 Error en Pull en ${{ github.repository }}"
+          SLACK_MESSAGE: |
+            *📌 Commit:* `${{ github.event.head_commit.message }}`
+            *👤 Autor:* `${{ github.event.head_commit.author.name }}`
+            *📂 Repositorio:* <${{ github.event.repository.html_url }}|${{ github.repository }}>
+            *🌿 Rama:* `${{ github.ref_name }}`
+            *🕒 Fecha:* `${{ github.event.head_commit.timestamp }}`
+            *👥 Ejecutado por:* `${{ github.actor }}`
+            *📊 Estado:* `❌ Falló`
+          SLACK_COLOR: "danger"

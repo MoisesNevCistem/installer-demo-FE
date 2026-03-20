@@ -1,0 +1,57 @@
+{
+  "name": "Monit-FrontEnd",
+  "version": "1.1.1",
+  "private": true,
+  "type": "module",
+  "main": ".installer/tray/tray.cjs",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node ./server.js",
+    "tray": "npx electron .installer/tray/tray.cjs",
+    "build-tray": "SET CSC_IDENTITY_AUTO_DISCOVERY=false && npm run build && electron-builder --win portable --x64 --publish never --config.win.target=portable"
+  },
+  "build": {
+    "appId": "com.cistem.monittrayfе",
+    "productName": "MonitTray-FE",
+    "artifactName": "MonitTray-FE.exe",
+    "directories": {
+      "output": ".installer/tray/bundle"
+    },
+    "files": [
+      ".installer/tray/**/*",
+      "!.installer/tray/bundle/**/*",
+      "!node_modules/**/*"
+    ],
+    "win": {
+      "icon": ".installer/tray/Jigglypuff.ico",
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "mac": null,
+    "linux": null
+  },
+  "author": "Cistem Innovacion <contacto@cisnerosgroup.com.mx>",
+  "license": "ISC",
+  "dependencies": {
+    "esbuild": "^0.27.4",
+    "express": "^5.2.1",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.30",
+    "vue-router": "^5.0.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.5",
+    "electron": "^41.0.3",
+    "electron-builder": "^26.8.1",
+    "vite": "^8.0.1",
+    "vite-plugin-vue-devtools": "^8.1.0"
+  }
+}

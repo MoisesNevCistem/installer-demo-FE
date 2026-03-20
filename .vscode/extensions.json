@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "Vue.volar",                     // Nuevo soporte para Vue.js (reemplaza a Vetur).
+    "wayou.vscode-todo-highlight",   // Resalta comentarios TODO, FIXME, etc.
+    "sdras.vue-vscode-snippets",     // Soporte de autocompletado de código para Vue JS.
+    "pflannery.vscode-versionlens",  // Soporte para actualizar versiones de paqueterias.
+    "xabikos.javascriptsnippets",    // Soporte de autocompletado de código de JS.
+    "ecmel.vscode-html-css",         // Soporte de autocompletado para HTML y CSS.
+    "formulahendry.auto-rename-tag", // Soporte para renombrar etiquetas de HTML
+  ]
+}
