@@ -34,3 +34,4 @@ coverage
 
 .installer/tray/bundle/
 *.exe
+/weblog

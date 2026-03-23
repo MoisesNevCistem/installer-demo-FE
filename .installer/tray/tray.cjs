@@ -9,7 +9,9 @@ const http = require("http")
 const net  = require("net")
 const fs   = require("fs")
 const { execSync } = require("child_process")
-const { authenticate } = require("./helpers/auth.cjs")
+const { authenticate }                                      = require("./helpers/auth.cjs")
+const { initLogger, writeLog, logServerEvent, logEnvChange,
+        closeLogger }                                       = require("./helpers/weblog.cjs")
 
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) { app.quit(); process.exit(0) }
@@ -62,6 +64,7 @@ let envLastModified  = 0
  * Agrega una línea al buffer de logs con timestamp.
  * Si el buffer supera LOG_MAX_BYTES se recorta desde el inicio.
  * Notifica a la ventana de logs si está abierta.
+ * También escribe en la bitácora diaria (weblog).
  * @param {string|Buffer} data - Texto o buffer a agregar
  */
 function appendLog(data) {
@@ -78,6 +81,9 @@ function appendLog(data) {
                 logBuffer.slice(logBuffer.length - LOG_MAX_BYTES)
   }
   if (logWindow) logWindow.webContents.send("log-update", logBuffer)
+
+  // ── Todo lo que ve la ventana de logs también va al weblog.txt ──
+  writeLog(raw)
 }
 
 // ============================================================
@@ -186,7 +192,6 @@ function resolveInstallRoot() {
   // 1. Registro — escrito por el instalador .iss
   const fromRegistry = getInstallPath()
   if (fromRegistry && fs.existsSync(fromRegistry)) {
-    appendLog(`[DEBUG] InstallRoot desde registro: ${fromRegistry}\n`)
     return fromRegistry
   }
 
@@ -322,6 +327,7 @@ function startServer() {
   const port    = parseInt(envVars.VITE_APP_PORT) || 92
 
   setServerState("starting")
+  logServerEvent("START")
 
   if (!fs.existsSync(SERVER_PATH)) {
     appendLog(`[Error] No se encontró server.cjs en: ${SERVER_PATH}\n`)
@@ -379,6 +385,7 @@ function startServer() {
       setServerState("running")
       tray.setContextMenu(updateMenu(true))
       appendLog("[Tray] Servidor listo ✓\n")
+      logServerEvent("READY", `puerto ${portMatch ? portMatch[1] : port}`)
     }
   })
 
@@ -386,6 +393,7 @@ function startServer() {
 
   serverProcess.on("error", (err) => {
     appendLog(`[Error] No se pudo iniciar el proceso: ${err.message}\n`)
+    logServerEvent("CRASH", err.message)
     setServerState("stopped")
   })
 
@@ -397,6 +405,13 @@ function startServer() {
       process.env._VITE_REAL_PORT = ""
       tray.setContextMenu(updateMenu(false))
       setServerState("stopped")
+
+      // Registra en weblog según tipo de cierre
+      if (code !== 0 && code !== null) {
+        logServerEvent("CRASH", `código de salida ${code}`)
+      } else {
+        logServerEvent("STOP")
+      }
 
       // Auto-restart si la caída no fue intencional
       if (code !== 0 && code !== null && autoRestartEnabled) {
@@ -483,6 +498,7 @@ function openEnvWindow() {
 
 /**
  * Limpia el buffer de logs y notifica a la ventana si está abierta.
+ * Nota: NO limpia el weblog.txt — la bitácora en disco es permanente.
  */
 ipcMain.on("clear-log-buffer", () => {
   logBuffer = ""
@@ -500,6 +516,7 @@ ipcMain.on("server-stop", () => {
     autoRestartEnabled = false
     setServerState("stopping")
     appendLog("\n[Tray] Deteniendo servidor...\n")
+    logServerEvent("STOP", "detención manual desde ventana de logs")
     killServer(() => {
       autoRestartEnabled = true
       tray.setContextMenu(updateMenu(false))
@@ -515,6 +532,7 @@ ipcMain.on("server-restart", () => {
     autoRestartEnabled = false
     setServerState("stopping")
     appendLog("\n[Tray] Reiniciando servidor...\n")
+    logServerEvent("RESTART", "reinicio manual desde ventana de logs")
     killServer(() => {
       autoRestartEnabled = true
       autoRestartCount   = 0
@@ -530,7 +548,6 @@ ipcMain.on("server-restart", () => {
  * Si falla, notifica al login para mostrar el error.
  */
 ipcMain.on("env-auth", (event, pass) => {
-  // Pasa ENV_PATH que ya fue resuelto correctamente al inicio
   const rol = authenticate(pass, ENV_PATH)
 
   if (rol !== null) {
@@ -561,6 +578,7 @@ ipcMain.on("env-auth", (event, pass) => {
  * Guarda el contenido editado en el .env.
  * Antes de escribir, reinyecta las líneas ocultas (HIDDEN_ENV_KEYS)
  * para que no se pierdan aunque el editor nunca las haya mostrado.
+ * Registra el cambio en el weblog.
  */
 ipcMain.on("save-env", (event, data) => {
   try {
@@ -583,6 +601,10 @@ ipcMain.on("save-env", (event, data) => {
     envLastModified = 0
     cachedEnvVars   = null
     appendLog("[Tray] .env actualizado — hashes preservados\n")
+
+    // ── Registra el cambio en la bitácora ──
+    logEnvChange("operador")
+
     event.sender.send("env-saved", true)
   } catch (err) {
     appendLog(`[Error] No se pudo guardar .env: ${err.message}\n`)
@@ -626,6 +648,7 @@ function updateMenu(isAlive) {
         autoRestartEnabled = false
         setServerState("stopping")
         appendLog("\n[Tray] Reiniciando agente desde tray...\n")
+        logServerEvent("RESTART", "reinicio manual desde tray")
         killServer(() => {
           autoRestartEnabled = true
           autoRestartCount   = 0
@@ -643,7 +666,11 @@ function updateMenu(isAlive) {
       label: "Salir",
       click: () => {
         autoRestartEnabled = false
-        killServer(() => app.quit())
+        logServerEvent("STOP", "salida manual desde tray")
+        killServer(() => {
+          closeLogger()
+          app.quit()
+        })
       }
     }
   ])
@@ -655,13 +682,18 @@ function updateMenu(isAlive) {
 
 /**
  * Punto de entrada principal.
+ * - Inicializa la bitácora diaria (weblog).
  * - Crea el ícono de la bandeja.
  * - Limpia el puerto antes de arrancar para evitar conflictos.
  * - Inicia el health check periódico del agente.
  */
 app.whenReady().then(() => {
   startedAt = new Date()
-  tray      = new Tray(ICON_PATH)
+
+  // ── Inicializa la bitácora antes de cualquier appendLog ──
+  initLogger(INSTALL_ROOT)
+
+  tray = new Tray(ICON_PATH)
   tray.setToolTip("Monit Agent")
   tray.setContextMenu(updateMenu(false))
 
