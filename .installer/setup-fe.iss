@@ -25,6 +25,9 @@ UninstallDisplayIcon={app}\MonitTray-FE.exe
 DisableWelcomePage=no
 SourceDir=C:\Users\CISTEM-MOISES\Documents\testing\monitor-tester\Monit-FrontEnd
 
+[Languages]
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
+
 [Dirs]
 Name: "{app}"; Permissions: users-modify
 
@@ -32,15 +35,14 @@ Name: "{app}"; Permissions: users-modify
 Source: ".installer\tray\bundle\win-unpacked\*"; DestDir: "{app}"; \
   Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "server.cjs";     DestDir: "{app}"; Flags: ignoreversion
-Source: "server.js"; DestDir: "{app}"; Flags: ignoreversion
+Source: "server.js";      DestDir: "{app}"; Flags: ignoreversion
 Source: "package.json";   DestDir: "{app}"; Flags: ignoreversion
 Source: "vite.config.js"; DestDir: "{app}"; Flags: ignoreversion
 Source: "index.html";     DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\*"; DestDir: "{app}\dist"; \
   Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "src\*"; DestDir: "{app}\src"; \
+Source: "src\*";  DestDir: "{app}\src"; \
   Flags: ignoreversion recursesubdirs createallsubdirs
-
 
 [Registry]
 Root: HKLM; Subkey: "SOFTWARE\Cistem Innovacion\MonitTray-FE"; \
@@ -49,6 +51,11 @@ Root: HKLM; Subkey: "SOFTWARE\Cistem Innovacion\MonitTray-FE"; \
 Root: HKLM; Subkey: "SOFTWARE\WOW6432Node\Cistem Innovacion\MonitTray-FE"; \
   ValueType: string; ValueName: "InstallPath"; \
   ValueData: "{app}"; Flags: createvalueifdoesntexist uninsdeletekey
+; ── Inicio automático con Windows ──
+Root: HKCU; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; \
+  ValueType: string; ValueName: "MonitTray-FE"; \
+  ValueData: """{app}\MonitTray-FE.exe"""; \
+  Flags: uninsdeletevalue
 
 [Run]
 Filename: "cmd.exe"; \
@@ -90,12 +97,52 @@ var
 
   PageEnv3: TWizardPage;
   edtHost: TEdit;
+  LblHost: TLabel;        // ← nuevo
   edtTimeout: TEdit;
   cmbHttps: TComboBox;
+  LblHttps: TLabel;       // ← nuevo
   edtSslCert: TEdit;
+  LblSslCert: TLabel;     // ← nuevo
   BtnSslCert: TButton;
   edtSslKey: TEdit;
+  LblSslKey: TLabel;      // ← nuevo
   BtnSslKey: TButton;
+
+// ── Muestra u oculta los campos que NO aplican en development ──
+procedure UpdateSslFieldsVisibility();
+var IsProd: Boolean;
+begin
+  IsProd := cmbNodeEnv.ItemIndex = 0; // 0 = production
+
+  LblHost.Visible    := IsProd;
+  edtHost.Visible    := IsProd;
+
+  LblHttps.Visible   := IsProd;
+  cmbHttps.Visible   := IsProd;
+
+  LblSslCert.Visible := IsProd;
+  edtSslCert.Visible := IsProd;
+  BtnSslCert.Visible := IsProd;
+
+  LblSslKey.Visible  := IsProd;
+  edtSslKey.Visible  := IsProd;
+  BtnSslKey.Visible  := IsProd;
+end;
+
+procedure NodeEnvChange(Sender: TObject);
+begin
+  UpdateSslFieldsVisibility();
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+  // Si el entorno es development, saltar la página 3 completa
+  if (PageID = PageEnv3.ID) and (cmbNodeEnv.ItemIndex = 1) then
+    Result := True;
+end;
+
+// ──────────────────────────────────────────────────────────────
 
 function GetRequiredKeys(): TStringList;
 var Keys: TStringList;
@@ -187,6 +234,9 @@ begin
     edtSslCert.Text        := GetEnvValue(Content, 'VITE_SSL_CERT');
     edtSslKey.Text         := GetEnvValue(Content, 'VITE_SSL_KEY');
   finally Content.Free; end;
+
+  // Actualiza visibilidad según el entorno cargado del .env
+  UpdateSslFieldsVisibility();
 end;
 
 procedure BrowseClick(Sender: TObject);
@@ -282,6 +332,52 @@ begin
   Result := Edt;
 end;
 
+// ── Variante que también devuelve el Label para poder ocultarlo ──
+function AddBrowseFieldEx(Page: TWizardPage; var YPos: Integer; LabelText: String;
+  DefaultVal: String; out Btn: TButton; out OutLbl: TLabel): TEdit;
+var Lbl: TLabel; Edt: TEdit;
+begin
+  Lbl := TLabel.Create(Page); Lbl.Parent := Page.Surface;
+  Lbl.Caption := LabelText; Lbl.Left := 0; Lbl.Top := YPos; Lbl.Width := Page.SurfaceWidth;
+  Edt := TEdit.Create(Page); Edt.Parent := Page.Surface;
+  Edt.Left := 0; Edt.Top := YPos + 16; Edt.Width := Page.SurfaceWidth - 110; Edt.Text := DefaultVal;
+  Btn := TButton.Create(Page); Btn.Parent := Page.Surface;
+  Btn.Caption := 'Examinar...'; Btn.Left := Page.SurfaceWidth - 105; Btn.Top := YPos + 14;
+  Btn.Width := 105;
+  YPos := YPos + 44;
+  OutLbl := Lbl;
+  Result := Edt;
+end;
+
+// ── Variante que también devuelve el Label para campos simples ──
+function AddFieldEx(Page: TWizardPage; var YPos: Integer; LabelText: String;
+  DefaultVal: String; out OutLbl: TLabel): TEdit;
+var Lbl: TLabel; Edt: TEdit;
+begin
+  Lbl := TLabel.Create(Page); Lbl.Parent := Page.Surface;
+  Lbl.Caption := LabelText; Lbl.Left := 0; Lbl.Top := YPos; Lbl.Width := Page.SurfaceWidth;
+  Edt := TEdit.Create(Page); Edt.Parent := Page.Surface;
+  Edt.Left := 0; Edt.Top := YPos + 16; Edt.Width := Page.SurfaceWidth; Edt.Text := DefaultVal;
+  YPos := YPos + 44;
+  OutLbl := Lbl;
+  Result := Edt;
+end;
+
+// ── Variante que también devuelve el Label para combos ──
+function AddComboFieldEx(Page: TWizardPage; var YPos: Integer; LabelText: String;
+  out OutLbl: TLabel): TComboBox;
+var Lbl: TLabel; Cmb: TComboBox;
+begin
+  Lbl := TLabel.Create(Page); Lbl.Parent := Page.Surface;
+  Lbl.Caption := LabelText; Lbl.Left := 0; Lbl.Top := YPos; Lbl.Width := Page.SurfaceWidth;
+  Cmb := TComboBox.Create(Page); Cmb.Parent := Page.Surface;
+  Cmb.Left := 0; Cmb.Top := YPos + 16; Cmb.Width := Page.SurfaceWidth;
+  Cmb.Style := csDropDownList;
+  YPos := YPos + 44;
+  OutLbl := Lbl;
+  Result := Cmb;
+end;
+
 procedure InitializeWizard();
 var YPos: Integer; LblInfo, LblFixed: TLabel;
 begin
@@ -321,46 +417,45 @@ begin
   cmbNodeEnv.Items.Add('production');
   cmbNodeEnv.Items.Add('development');
   cmbNodeEnv.ItemIndex := 0;
-
-  edtBrand := AddField(PageEnv1, YPos, 'VITE_BRAND — Nombre del proyecto *', '[NOMBRE_PROYECTO]');
-
-  LblFixed := TLabel.Create(PageEnv1); LblFixed.Parent := PageEnv1.Surface;
-  LblFixed.Caption := 'VITE_COPYRIGHT — Cistem Innovacion  |  VITE_VERSION — v1.1.1  (fijos, no editables)';
-  LblFixed.Left := 0; LblFixed.Top := YPos; LblFixed.Width := PageEnv1.SurfaceWidth;
-  LblFixed.Font.Color := clGray; LblFixed.WordWrap := True;
-  YPos := YPos + 28;
+  cmbNodeEnv.OnChange := @NodeEnvChange;  // ← asigna el evento
 
   edtPathLogoBrand  := AddBrowseField(PageEnv1, YPos, 'VITE_PATH_LOGO_BRAND — Logo del proyecto (imagen)', '', BtnLogoBrand);
   BtnLogoBrand.OnClick := @BrowseLogoBrandClick;
   edtPathLogoCistem := AddBrowseField(PageEnv1, YPos, 'VITE_PATH_LOGO_CISTEM — Logo Cistem (imagen)', '', BtnLogoCistem);
   BtnLogoCistem.OnClick := @BrowseLogoCistemClick;
 
+  edtTimeout := AddField(PageEnv1, YPos,'VITE_TIMEOUT — Tiempo de espera en ms', '8000');
+
   // ── Página 2: APIs de backend ────────────────────────────────
-  PageEnv2 := CreateCustomPage(PageEnv1.ID, 'Conexión al backend',
-    'URLs de los servicios backend y puerto del frontend.');
+  PageEnv2 := CreateCustomPage(PageEnv1.ID, 'Conexión al backend', 'URLs de los servicios backend y puerto del frontend.');
   YPos := 0;
 
-  edtApiApp  := AddField(PageEnv2, YPos, 'VITE_API_APP * — URL del backend principal (API)', 'http://localhost:91');
-  edtApiAuth := AddField(PageEnv2, YPos, 'VITE_API_AUTH * — URL del backend de autenticación (Auth)', 'http://localhost:9091');
   edtAppPort := AddField(PageEnv2, YPos, 'VITE_APP_PORT * — Puerto donde corre el frontend', '92');
+  edtApiApp  := AddField(PageEnv2, YPos, 'VITE_API_APP * — URL del backend principal (APP)', 'http://localhost:91');
+  edtApiAuth := AddField(PageEnv2, YPos, 'VITE_API_AUTH * — URL del backend de autenticación (AUTH)', 'http://localhost:9091');
 
   // ── Página 3: Red, HTTPS y SSL ───────────────────────────────
   PageEnv3 := CreateCustomPage(PageEnv2.ID, 'Red y certificados SSL',
     'Configura el host, HTTPS y las rutas de tus certificados SSL.');
   YPos := 0;
 
-  edtHost  := AddField(PageEnv3, YPos, 'VITE_HOST — Host o dominio (dejar vacío para localhost)', '');
-  edtTimeout := AddField(PageEnv3, YPos, 'VITE_TIMEOUT — Tiempo de espera en ms', '8000');
-
-  cmbHttps := AddComboField(PageEnv3, YPos, 'VITE_HTTPS — ¿Usar HTTPS?');
+  // Usamos las variantes *Ex para guardar referencia a cada Label
+  edtHost    := AddFieldEx(PageEnv3, YPos, 'VITE_HOST — Host o dominio (dejar vacío para localhost)', '', LblHost);
+  cmbHttps   := AddComboFieldEx(PageEnv3, YPos, 'VITE_HTTPS — ¿Usar HTTPS?', LblHttps);
   cmbHttps.Items.Add('NO');
   cmbHttps.Items.Add('YES');
   cmbHttps.ItemIndex := 0;
 
-  edtSslCert := AddBrowseField(PageEnv3, YPos, 'VITE_SSL_CERT — Certificado (.crt / .pem)', '', BtnSslCert);
+  edtSslCert := AddBrowseFieldEx(PageEnv3, YPos,
+    'VITE_SSL_CERT — Certificado (.crt / .pem)', '', BtnSslCert, LblSslCert);
   BtnSslCert.OnClick := @BrowseSslCertClick;
-  edtSslKey  := AddBrowseField(PageEnv3, YPos, 'VITE_SSL_KEY — Clave privada (.key / .pem)', '', BtnSslKey);
+
+  edtSslKey  := AddBrowseFieldEx(PageEnv3, YPos,
+    'VITE_SSL_KEY — Clave privada (.key / .pem)', '', BtnSslKey, LblSslKey);
   BtnSslKey.OnClick := @BrowseSslKeyClick;
+
+  // Aplica visibilidad inicial según el valor por defecto (production)
+  UpdateSslFieldsVisibility();
 end;
 
 procedure WriteEnvFile();
@@ -378,9 +473,9 @@ begin
     HttpsVal := '';
 
   Lines :=
-      '#* Generado por MonitAgent FrontEnd Installer'                         + #13#10
+      '#* Generado por MonitAgent FrontEnd Installer'                               + #13#10
     + 'VITE_NODE_ENV="'        + cmbNodeEnv.Items[cmbNodeEnv.ItemIndex]       + '"' + #13#10
-    + 'VITE_BRAND="'           + edtBrand.Text                                + '"' + #13#10
+    + 'VITE_BRAND="MonitTray-FE"'                                                   + #13#10
     + 'VITE_COPYRIGHT="Cistem Innovacion"'                                          + #13#10
     + 'VITE_VERSION="1.1.1"'                                                        + #13#10
     + 'VITE_PATH_LOGO_BRAND="' + edtPathLogoBrand.Text                        + '"' + #13#10
