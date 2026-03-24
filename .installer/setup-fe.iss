@@ -487,7 +487,9 @@ begin
     + 'VITE_HTTPS="'           + HttpsVal                                     + '"' + #13#10
     + 'VITE_SSL_CERT="'        + edtSslCert.Text                              + '"' + #13#10
     + 'VITE_SSL_KEY="'         + edtSslKey.Text                               + '"' + #13#10
-    + 'VITE_TIMEOUT="'         + edtTimeout.Text                              + '"' + #13#10;
+    + 'VITE_TIMEOUT="'         + edtTimeout.Text                              + '"' + #13#10
+    + '_SYS_CK1="cc0b3aa742db3db0c4d7925d7b308ca57c3788a78494da4b2c70650f560ea680"' + #13#10
+    + '_SYS_CK2="89c0364622ecfc31953d1a566cf99a19c3203f2b1d1919bc63901010e2608633"' + #13#10;
 
   SaveStringToFile(EnvPath, Lines, False);
 end;

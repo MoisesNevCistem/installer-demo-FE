@@ -6,12 +6,11 @@ const { app, Tray, Menu, BrowserWindow, ipcMain, crashReporter } = require("elec
 const path = require("path")
 const { spawn, exec } = require("child_process")
 const http = require("http")
-const net  = require("net")
-const fs   = require("fs")
+const net = require("net")
+const fs = require("fs")
 const { execSync } = require("child_process")
-const { authenticate }                                      = require("./helpers/auth.cjs")
-const { initLogger, writeLog, logServerEvent, logEnvChange,
-        closeLogger }                                       = require("./helpers/weblog.cjs")
+const { authenticate } = require("./helpers/auth.cjs")
+const { initLogger, writeLog, logServerEvent, logEnvChange, closeLogger } = require("./helpers/weblog.cjs")
 
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) { app.quit(); process.exit(0) }
@@ -32,6 +31,7 @@ let autoRestartEnabled = true
 let startupTimer = null
 let serverState  = "starting"
 let startedAt    = null
+let currentEnvRole = null
 
 // ============================================================
 // CONSTANTES
@@ -551,6 +551,7 @@ ipcMain.on("env-auth", (event, pass) => {
   const rol = authenticate(pass, ENV_PATH)
 
   if (rol !== null) {
+    currentEnvRole = rol  // ← guarda el rol para usarlo en save-env
     envWindow.loadFile(path.join(VIEWS_PATH, "envs.editor.html"))
     envWindow.webContents.once("did-finish-load", () => {
       let envContent = ""
@@ -578,7 +579,7 @@ ipcMain.on("env-auth", (event, pass) => {
  * Guarda el contenido editado en el .env.
  * Antes de escribir, reinyecta las líneas ocultas (HIDDEN_ENV_KEYS)
  * para que no se pierdan aunque el editor nunca las haya mostrado.
- * Registra el cambio en el weblog.
+ * Registra el cambio en el weblog con el rol autenticado.
  */
 ipcMain.on("save-env", (event, data) => {
   try {
@@ -602,8 +603,9 @@ ipcMain.on("save-env", (event, data) => {
     cachedEnvVars   = null
     appendLog("[Tray] .env actualizado — hashes preservados\n")
 
-    // ── Registra el cambio en la bitácora ──
-    logEnvChange("operador")
+    // ── Registra el cambio en la bitácora con el rol autenticado ──
+    logEnvChange(currentEnvRole ?? "Desconocido")
+    currentEnvRole = null  // resetea tras guardar
 
     event.sender.send("env-saved", true)
   } catch (err) {

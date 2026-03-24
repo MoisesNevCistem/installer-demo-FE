@@ -123,6 +123,15 @@ function initLogger(installRoot) {
     `${"=".repeat(60)}\n`
   )
 }
+/**
+ * Filtra las líneas ocultas del contenido de un string.
+ * 
+ * @param {string} str 
+ * @returns 
+ */
+function _stripAnsi(str) {
+  return str.replace(/\x1b\[[0-9;]*m/g, "").replace(/\[\d+m/g, "")
+}
 
 /**
  * Escribe un mensaje libre en la bitácora del día.
@@ -136,7 +145,7 @@ function writeLog(message) {
   // Rotar automáticamente si cambió el día (medianoche)
   if (_today() !== _currentDay) _openStream()
 
-  _stream.write(_format(message))
+  _stream.write(_format(_stripAnsi(message.toString())))
 }
 
 /**
@@ -168,11 +177,16 @@ function logServerEvent(event, detail = "") {
 /**
  * Registra una modificación al archivo .env.
  *
- * @param {string} [user]  - Usuario que realizó el cambio (default: "operador")
- * @param {string} [note]  - Nota o detalle adicional opcional
+ * @param {"dev"|"support"|"operador"} [role] - Rol autenticado desde auth.cjs
+ * @param {string} [note] - Nota o detalle adicional opcional
  */
-function logEnvChange(user = "operador", note = "") {
-  const base = `[ENV] Variables de entorno modificadas por: ${user}`
+function logEnvChange(role = "operador", note = "") {
+  const labels = {
+    dev:      "Desarrollo",
+    support:  "Soporte"
+  }
+  const who  = labels[role] ?? role
+  const base = `[ENV] Variables de entorno modificadas por: ${who}`
   const line = note ? `${base} — ${note}` : base
   writeLog(`\n${line}\n`)
 }
