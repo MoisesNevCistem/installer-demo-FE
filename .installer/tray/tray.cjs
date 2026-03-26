@@ -255,20 +255,6 @@ function killPort(port, callback) {
 }
 
 /**
- * Verifica si un puerto está en uso intentando una conexión HTTP.
- * @param {number} port
- * @param {function(boolean): void} callback
- */
-function isPortInUse(port, callback) {
-  const req = http.request({
-    host: "127.0.0.1", port, method: "GET", timeout: 1000, path: "/"
-  }, () => callback(true))
-  req.on("error",   () => callback(false))
-  req.on("timeout", () => { req.destroy(); callback(false) })
-  req.end()
-}
-
-/**
  * Verifica si el agente está respondiendo en el puerto configurado.
  * Usa TCP directamente para mayor velocidad que HTTP.
  * @param {function(boolean): void} callback

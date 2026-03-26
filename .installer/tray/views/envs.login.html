@@ -1,78 +1,222 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <style>
-        body {
-            background: #0d1117;
-            color: #e6edf3;
-            font-family: Consolas;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-        }
-        .box {
-            background: #161b22;
-            border: 1px solid #30363d;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        input {
-            margin-top: 10px;
-            padding: 8px;
-            width: 200px;
-            background: #0d1117;
-            border: 1px solid #30363d;
-            color: white;
-        }
-        button {
-            margin-top: 10px;
-            padding: 6px 12px;
-            background: #238636;
-            border: none;
-            color: white;
-            cursor: pointer;
-        }
-        .err {
-            color: #f85149;
-            margin-top: 8px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>MonitAgent — Auth</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:        #0a0810;
+      --border:    rgba(180,140,255,0.08);
+      --border-hi: rgba(180,140,255,0.22);
+      --accent:    #b48cff;
+      --accent2:   #d4aaff;
+      --text:      #ede8f8;
+      --muted:     #6a5a80;
+      --danger:    #ff5f8d;
+      --success:   #a78bfa;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(180,140,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(180,140,255,0.03) 1px, transparent 1px);
+      background-size: 32px 32px;
+      animation: drift 20s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes drift { to { background-position: 32px 32px; } }
+
+    .bg-glow {
+      position: fixed; z-index: 0; pointer-events: none;
+      width: 500px; height: 500px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(140,80,255,0.07) 0%, transparent 70%);
+      top: -180px; left: -120px;
+    }
+    .bg-glow2 {
+      position: fixed; z-index: 0; pointer-events: none;
+      width: 340px; height: 340px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(180,100,255,0.05) 0%, transparent 70%);
+      bottom: -80px; right: -80px;
+    }
+
+    .card {
+      position: relative; z-index: 1;
+      background: rgba(15,13,24,0.88);
+      border: 1px solid var(--border-hi);
+      border-radius: 14px;
+      padding: 32px 28px 28px;
+      width: 300px;
+      display: flex; flex-direction: column; align-items: center;
+      backdrop-filter: blur(12px);
+      opacity: 0;
+      animation: fadeUp 0.35s ease 0.08s forwards;
+    }
+    @keyframes fadeUp {
+      to   { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; transform: translateY(8px); }
+    }
+
+    .brand { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; }
+    .brand-icon {
+      width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0;
+      background: linear-gradient(135deg, rgba(180,140,255,0.2), rgba(140,80,255,0.12));
+      border: 1px solid var(--border-hi);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .brand-icon svg { width: 14px; height: 14px; }
+    .brand-name { font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+
+    .lock-wrap {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: rgba(180,140,255,0.08);
+      border: 1px solid rgba(180,140,255,0.18);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 14px;
+    }
+    .lock-wrap svg { width: 20px; height: 20px; }
+
+    .card-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; letter-spacing: -0.01em; }
+    .card-sub   { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); margin-bottom: 22px; }
+
+    .input-wrap { width: 100%; position: relative; margin-bottom: 12px; }
+    .input-wrap svg {
+      position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+      width: 13px; height: 13px; pointer-events: none;
+      stroke: var(--muted);
+    }
+
+    input[type="password"] {
+      width: 100%;
+      background: rgba(10,8,16,0.8);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      padding: 9px 12px 9px 32px;
+      outline: none;
+      transition: border-color 0.15s ease;
+      letter-spacing: 0.12em;
+    }
+    input[type="password"]::placeholder { color: var(--muted); letter-spacing: 0; }
+    input[type="password"]:focus { border-color: rgba(180,140,255,0.4); }
+    input[type="password"].shake {
+      animation: shake 0.35s ease;
+      border-color: rgba(255,95,141,0.4) !important;
+    }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%     { transform: translateX(-5px); }
+      40%     { transform: translateX(5px); }
+      60%     { transform: translateX(-4px); }
+      80%     { transform: translateX(4px); }
+    }
+
+    .btn-login {
+      width: 100%;
+      font-family: 'Syne', sans-serif;
+      font-size: 12px; font-weight: 700;
+      padding: 9px 0; border-radius: 7px;
+      border: 1px solid rgba(212,170,255,0.25);
+      background: rgba(180,140,255,0.08);
+      color: var(--accent2);
+      cursor: pointer; outline: none;
+      transition: all 0.15s ease;
+      letter-spacing: 0.02em;
+    }
+    .btn-login:hover   { background: rgba(180,140,255,0.15); border-color: rgba(212,170,255,0.4); }
+    .btn-login:active  { transform: scale(0.98); }
+
+    .err-msg {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; color: var(--danger);
+      margin-top: 10px; min-height: 14px;
+      opacity: 0; transition: opacity 0.2s ease;
+    }
+    .err-msg.visible { opacity: 1; }
+  </style>
 </head>
-    <body>
-        <div class="box">
-            <div>🔐 Acceso a Variables de Entorno</div>
-            <input id="pass" type="password" placeholder="Contraseña" />
-            <br>
-            <button onclick="login()">Ingresar</button>
-            <div id="err" class="err"></div>
-        </div>
+<body>
 
-        <script>
-            const { ipcRenderer } = require('electron')
+  <div class="bg-grid"></div>
+  <div class="bg-glow"></div>
+  <div class="bg-glow2"></div>
 
-            // Soporte para Enter
-            document.getElementById('pass').addEventListener('keydown', e => {
-            if (e.key === 'Enter') login()
-            })
+  <div class="card">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6"
+             stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      </div>
+      <span class="brand-name">MonitAgent</span>
+    </div>
 
-            function login() {
-                const pass = document.getElementById('pass').value.trim()
-                if (!pass) return
-                ipcRenderer.send('env-auth', pass)
-                }
+    <div class="lock-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6"
+           stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
 
-                // Solo se dispara si la contraseña fue incorrecta
-                // El éxito lo maneja tray.cjs con loadFile() directamente
-                ipcRenderer.on('env-auth-result', (_, ok) => {
-                if (!ok) {
-                    document.getElementById('err').textContent = "Contraseña incorrecta"
-                    document.getElementById('pass').value = ""
-                    document.getElementById('pass').focus()
-                }
-            })
-        </script>
-    </body>
+    <div class="card-title">Variables de entorno</div>
+    <div class="card-sub">ACCESO PROTEGIDO</div>
+    <div class="card-sub">Introduce tu contraseña</div>
+
+    <div class="input-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"
+           stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      <input id="pass" type="password" placeholder="Contraseña" autofocus />
+    </div>
+
+    <button class="btn-login" onclick="login()">Ingresar</button>
+    <div class="err-msg" id="err"></div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron')
+
+    const passEl = document.getElementById('pass')
+    const errEl  = document.getElementById('err')
+
+    passEl.addEventListener('keydown', e => { if (e.key === 'Enter') login() })
+
+    function login() {
+      const pass = passEl.value.trim()
+      if (!pass) return
+      ipcRenderer.send('env-auth', pass)
+    }
+
+    ipcRenderer.on('env-auth-result', (_, ok) => {
+      if (!ok) {
+        errEl.textContent = '✗ contraseña incorrecta'
+        errEl.classList.add('visible')
+        passEl.value = ''
+        passEl.focus()
+        passEl.classList.add('shake')
+        setTimeout(() => passEl.classList.remove('shake'), 400)
+      }
+    })
+  </script>
+
+</body>
 </html>
