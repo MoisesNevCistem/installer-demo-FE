@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>MonitAgent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:        #0a0810;
+      --border-hi: rgba(180,140,255,0.22);
+      --accent:    #b48cff;
+      --accent2:   #d4aaff;
+      --text:      #ede8f8;
+      --muted:     #6a5a80;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      font-family: 'Syne', sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(180,140,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(180,140,255,0.03) 1px, transparent 1px);
+      background-size: 32px 32px;
+      animation: drift 20s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes drift { to { background-position: 32px 32px; } }
+
+    .bg-glow {
+      position: fixed; z-index: 0; pointer-events: none;
+      width: 600px; height: 600px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(140,80,255,0.09) 0%, transparent 70%);
+      top: -200px; left: -160px;
+      animation: pulse 4s ease-in-out infinite;
+    }
+    .bg-glow2 {
+      position: fixed; z-index: 0; pointer-events: none;
+      width: 400px; height: 400px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(180,100,255,0.07) 0%, transparent 70%);
+      bottom: -100px; right: -100px;
+      animation: pulse 4s ease-in-out infinite reverse;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%     { opacity: 0.5; }
+    }
+
+    /* ── Shell ocupa todo y divide en 3 filas ── */
+    .shell {
+      position: relative; z-index: 1;
+      width: 100%; height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center;
+    }
+
+    /* fila superior vacía — empuja el centro */
+    .spacer-top    { flex: 1; }
+    /* fila inferior — versión pegada abajo */
+    .spacer-bottom { flex: 1; display: flex; align-items: flex-end; padding-bottom: 18px; }
+
+    /* ── Contenido central ── */
+    .splash {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+
+    .icon-wrap {
+      width: 72px; height: 72px; border-radius: 20px;
+      background: linear-gradient(135deg, rgba(180,140,255,0.18), rgba(140,80,255,0.10));
+      border: 1px solid var(--border-hi);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 24px;
+      animation: iconIn 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.1s both;
+      position: relative;
+    }
+    .icon-wrap::after {
+      content: '';
+      position: absolute; inset: -5px;
+      border-radius: 24px;
+      border: 1px solid rgba(180,140,255,0.12);
+      animation: ringPulse 2.5s ease-in-out infinite;
+    }
+    @keyframes ringPulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%     { opacity: 0; transform: scale(1.15); }
+    }
+    .icon-wrap svg { width: 32px; height: 32px; }
+    @keyframes iconIn {
+      from { opacity: 0; transform: scale(0.7); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .app-name {
+      font-size: 28px; font-weight: 800;
+      color: var(--text); letter-spacing: -0.03em;
+      animation: textIn 0.4s ease 0.3s both;
+      margin-bottom: 6px;
+    }
+    .app-name span {
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .tagline {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--muted);
+      letter-spacing: 0.06em;
+      animation: textIn 0.4s ease 0.4s both;
+      margin-bottom: 48px;
+    }
+
+    @keyframes textIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .progress-wrap {
+      width: 200px;
+      animation: textIn 0.4s ease 0.5s both;
+    }
+    .progress-track {
+      width: 100%; height: 2px;
+      background: rgba(180,140,255,0.1);
+      border-radius: 2px; overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 2px; width: 0%;
+      transition: width 0.12s ease;
+      box-shadow: 0 0 8px rgba(180,140,255,0.5);
+    }
+    .progress-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; color: var(--muted);
+      text-align: center; min-height: 14px;
+    }
+
+    .version {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; color: rgba(106,90,128,0.5);
+      animation: textIn 0.4s ease 0.6s both;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+  <div class="bg-glow"></div>
+  <div class="bg-glow2"></div>
+
+  <div class="shell">
+
+    <div class="spacer-top"></div>
+
+    <div class="splash">
+      <div class="icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.4"
+             stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      </div>
+
+      <div class="app-name">Monit<span>Agent</span></div>
+      <div class="tagline">monitoring · automation · control</div>
+
+      <div class="progress-wrap">
+        <div class="progress-track">
+          <div class="progress-bar" id="bar"></div>
+        </div>
+        <div class="progress-label" id="label">Iniciando...</div>
+      </div>
+    </div>
+
+    <div class="spacer-bottom">
+      <div class="version" id="version">v1.0.0</div>
+    </div>
+
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron')
+
+    const bar     = document.getElementById('bar')
+    const label   = document.getElementById('label')
+    const version = document.getElementById('version')
+
+    const steps = [
+      { pct: 15,  text: 'Cargando configuración...' },
+      { pct: 35,  text: 'Iniciando servicios...'    },
+      { pct: 60,  text: 'Conectando agente...'      },
+      { pct: 80,  text: 'Verificando entorno...'    },
+      { pct: 95,  text: 'Casi listo...'             },
+      { pct: 100, text: 'Listo'                     },
+    ]
+
+    let current = 0
+
+    function nextStep() {
+      if (current >= steps.length) return
+      const s = steps[current++]
+      bar.style.width   = s.pct + '%'
+      label.textContent = s.text
+    }
+
+    const auto = setInterval(() => {
+      if (current < steps.length) nextStep()
+      else clearInterval(auto)
+    }, 380)
+
+    ipcRenderer.on('splash-step',    (_, { pct, text }) => { bar.style.width = pct + '%'; label.textContent = text })
+    ipcRenderer.on('splash-version', (_, v)             => { version.textContent = v })
+
+    nextStep()
+  </script>
+
+</body>
+</html>

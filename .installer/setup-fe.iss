@@ -878,7 +878,7 @@ end;
   CopySslFiles
   ──────────────────────────────────────────────────────────────
   Si el usuario proporcionó archivos SSL, los copia a la
-  carpeta {app}\ssl para que el servidor los encuentre.
+  carpeta (app) ssl para que el servidor los encuentre.
   Se ejecuta antes de WriteEnvFile (ver CurStepChanged).
   ══════════════════════════════════════════════════════════════ }
 procedure CopySslFiles();
@@ -914,8 +914,8 @@ end;
   ──────────────────────────────────────────────────────────────
   Evento que dispara Inno Setup en cada cambio de paso.
   En ssInstall (justo antes de copiar archivos):
-    1) Copia los certificados SSL a {app}\ssl
-    2) Escribe el archivo .env en {app}
+    1) Copia los certificados SSL a (app)\ssl
+    2) Escribe el archivo .env en (app)
   ══════════════════════════════════════════════════════════════ }
 procedure CurStepChanged(CurStep: TSetupStep);
 begin

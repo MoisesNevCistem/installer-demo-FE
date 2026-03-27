@@ -11,6 +11,7 @@ const fs = require("fs")
 const { execSync } = require("child_process")
 const { authenticate } = require("./helpers/auth.cjs")
 const { initLogger, writeLog, logServerEvent, logEnvChange, closeLogger } = require("./helpers/weblog.cjs")
+let splashWindow = null
 
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) { app.quit(); process.exit(0) }
@@ -372,6 +373,7 @@ function startServer() {
       tray.setContextMenu(updateMenu(true))
       appendLog("[Tray] Servidor listo ✓\n")
       logServerEvent("READY", `puerto ${portMatch ? portMatch[1] : port}`)
+      closeSplash() 
     }
   })
 
@@ -391,6 +393,7 @@ function startServer() {
       process.env._VITE_REAL_PORT = ""
       tray.setContextMenu(updateMenu(false))
       setServerState("stopped")
+      closeSplash()
 
       // Registra en weblog según tipo de cierre
       if (code !== 0 && code !== null) {
@@ -476,6 +479,39 @@ function openEnvWindow() {
   envWindow.loadFile(path.join(VIEWS_PATH, "envs.login.html"))
 
   envWindow.on("closed", () => (envWindow = null))
+}
+
+function openSplashWindow() {
+  splashWindow = new BrowserWindow({
+    width: 520, height: 360,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    center: true,
+    skipTaskbar: true,
+    icon: ICON_PATH,
+    webPreferences: { nodeIntegration: true, contextIsolation: false }
+  })
+
+  splashWindow.loadFile(path.join(VIEWS_PATH, "splash.html"))
+
+  // ← intercepta el cierre y solo oculta
+  splashWindow.on("close", (e) => {
+    e.preventDefault()
+    splashWindow.hide()
+  })
+
+  splashWindow.webContents.on("did-finish-load", () => {
+    const envVars = getEnvVars()
+    const version = envVars.VITE_VERSION || "v1.0.0"
+    splashWindow.webContents.send("splash-version", version)
+  })
+}
+
+function closeSplash() {
+  if (splashWindow) {
+    splashWindow.hide()
+  }
 }
 
 // ============================================================
@@ -681,9 +717,22 @@ app.whenReady().then(() => {
   // ── Inicializa la bitácora antes de cualquier appendLog ──
   initLogger(INSTALL_ROOT)
 
+  openSplashWindow()
+
   tray = new Tray(ICON_PATH)
   tray.setToolTip("Monit Agent")
   tray.setContextMenu(updateMenu(false))
+
+  // click izquierdo abre/cierra el splash si está vivo, si no abre logs
+  tray.on("click", () => {
+  if (!splashWindow) return
+  if (splashWindow.isVisible()) {
+    splashWindow.hide()
+  } else {
+    splashWindow.show()
+    splashWindow.focus()
+  }
+})
 
   const envVars = getEnvVars()
   const port    = parseInt(envVars.VITE_APP_PORT) || 92
